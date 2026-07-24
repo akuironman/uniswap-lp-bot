@@ -1,4 +1,4 @@
-# 💎 LP HUNTER — Telegram Bot + Web Dashboard (Yunus Strategy)
+# 💎 LP HUNTER — Telegram Bot + Web Dashboard
 
 Bot auto-LP Uniswap V3 dengan strategi persis dari [@0xyunss](https://x.com/0xyunss/status/2078140396182651195):
 
@@ -112,7 +112,7 @@ MIN_VOLUME_24H=50000
 MIN_LIQUIDITY_USD=10000
 
 POSITION_SIZE_USD=200
-MAX_ACTIVE_POSITIONS=3          # spray 3 pair (rule Yunus)
+MAX_ACTIVE_POSITIONS=3          # spray 3 pair
 RANGE_WIDTH_PCT=15
 TAKE_PROFIT_PCT=30
 STOP_LOSS_PCT=25
