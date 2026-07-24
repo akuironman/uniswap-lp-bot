@@ -151,6 +151,17 @@ def _format_event(evt: dict[str, Any]) -> str | None:
             mc = t.get("market_cap") or 0
             lines.append(f"• <b>{sym}</b> · {fmt_usd(mc)} · Δ24h {fmt_pct(chg)}")
         return "\n".join(lines)
+    if k == "position.swap.start":
+        sym = html.escape(str(evt.get('symbol', '?')))
+        eth_wei = int(evt.get('eth_wei') or 0)
+        eth = eth_wei / 1e18
+        return (f"🔄 <b>SWAPPING ETH → {sym}</b>\n"
+                f"amount: <code>{eth:.6f} ETH</code>  ·  chain: <i>{evt.get('chain')}</i>")
+    if k == "position.swap.done":
+        sym = html.escape(str(evt.get('symbol', '?')))
+        out = evt.get('amount_out')
+        return (f"✅ <b>SWAP DONE</b> {sym}\n"
+                f"got: <code>{out}</code> raw units")
     if k == "position.open":
         pos = evt.get("pos") or {}
         sym = html.escape(str(pos.get("symbol", "?")))
@@ -186,10 +197,10 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_chat or not _allowed(update.effective_chat.id):
         return
     txt = (
-        "💎 <b>LP HUNTER</b>\n"
-        "<i>Yunus strategy · GMGN 24h · single-side stable</i>\n\n"
-        "Bot LP Uniswap auto — screen token trending, buka posisi single-side, "
-        "auto rebalance, TP/SL otomatis.\n\n"
+        "🩸 <b>ROBINHOOD LP HUNTER</b>\n"
+        "<i>Uniswap V3 · chain 4663 · single-side ETH · Yunus strategy</i>\n\n"
+        "Bot auto-LP khusus <b>Robinhood Chain</b>. Otomatis: swap ETH → target token → "
+        "LP tight range → auto rebalance → TP/SL exit.\n\n"
         "Filter default (Yunus):\n"
         f"• mcap > {fmt_usd(CONFIG.min_mcap)}\n"
         f"• umur {CONFIG.min_age_hours}–{CONFIG.max_age_hours}h\n"

@@ -24,6 +24,42 @@ LOG_PATH = Path(__file__).resolve().parent.parent / "logs" / "trades.jsonl"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
+def _size_usd_to_eth_wei(size_usd: float) -> int:
+    """Convert USD position size → wei ETH (Robinhood chain native = ETH).
+
+    Prefers POSITION_SIZE_ETH from .env when set (most reliable — user knows the
+    exact ETH amount, no oracle needed). Otherwise divides USD by an ETH/USD
+    rate we fetch from DexScreener (best-effort). Raises with a clear message
+    if neither works instead of silently guessing.
+    """
+    if CONFIG.position_size_eth and CONFIG.position_size_eth > 0:
+        return int(CONFIG.position_size_eth * 10**18)
+
+    # Fetch ETH/USD rate from Ethereum mainnet WETH pair (deepest liquidity).
+    import httpx
+    price = None
+    try:
+        r = httpx.get(
+            "https://api.dexscreener.com/latest/dex/tokens/"
+            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            timeout=10.0,
+        )
+        r.raise_for_status()
+        pairs = r.json().get("pairs") or []
+        pairs.sort(key=lambda p: float((p.get("liquidity") or {}).get("usd") or 0), reverse=True)
+        if pairs:
+            price = float(pairs[0].get("priceUsd") or 0) or None
+    except Exception:
+        price = None
+
+    if not price or price <= 0:
+        raise RuntimeError(
+            f"Tidak bisa dapat harga ETH/USD untuk konversi POSITION_SIZE_USD (${size_usd}) → wei ETH. "
+            f"Solusi: set POSITION_SIZE_ETH=<jumlah> di .env (mis. 0.05)."
+        )
+    return int((size_usd / price) * 10**18)
+
+
 @dataclass
 class BotState:
     running: bool = False
@@ -47,6 +83,7 @@ class LPBot:
 
     def __init__(self, on_event: Callable[[dict[str, Any]], None] | None = None) -> None:
         self.state = BotState()
+        # Single-chain (Robinhood) — cukup satu executor.
         self.executor = UniswapExecutor()
         self._on_event = on_event or (lambda _e: None)
         self._task: asyncio.Task | None = None
@@ -127,10 +164,18 @@ class LPBot:
                 break
 
     async def _open_position(self, cand: TokenCandidate) -> None:
-        size = CONFIG.position_size_usd
+        size_usd = CONFIG.position_size_usd
+        executor = self.executor
 
-        # Dry-run (default) OR executor not ready → simulate the position.
-        if self.state.dry_run or not self.executor.can_trade():
+        # Dry-run OR executor not ready (missing addresses / no PK) → simulate.
+        if self.state.dry_run or not executor.can_trade():
+            reason = None
+            if not self.state.dry_run:
+                missing = executor.missing_addresses()
+                reason = (
+                    f"missing addresses: {missing} — isi di .env untuk enable live"
+                    if missing else "PK/RPC not ready — falling back to dry-run"
+                )
             pos = Position(
                 token_id=int(time.time() * 1000),
                 symbol=cand.symbol,
@@ -140,33 +185,67 @@ class LPBot:
                 liquidity=0,
                 entry_price=cand.price_usd,
                 entry_ts=time.time(),
-                size_usd=size,
+                size_usd=size_usd,
                 chain=cand.chain,
             )
             self.state.positions[cand.pair_address] = pos
-            self.state.total_deployed_usd += size
+            self.state.total_deployed_usd += size_usd
             self.state.stats["positions_opened"] += 1
-            self.emit("position.open", {"mode": "dry", "pos": pos.to_dict(), "cand": cand.to_dict()})
+            payload = {"mode": "dry", "pos": pos.to_dict(), "cand": cand.to_dict()}
+            if reason:
+                payload["skip_reason"] = reason
+            self.emit("position.open", payload)
             return
 
-        # Live: plan the mint, then broadcast it. Runs off the event loop so we
-        # don't block the scan loop on RPC round-trips.
+        # ─── Live path (Yunus single-side): ETH → target token → mint ─────
+        # 1. Convert USD size → wei ETH via candidate price hint (price of target in USD
+        #    is not the ETH price; we need an ETH/USD source). Sederhananya: minta user
+        #    set POSITION_SIZE_ETH langsung, atau infer via native symbol=ETH → assume
+        #    1 ETH ≈ $3000 as a *very* rough fallback. Better: pull ETH/USD dari
+        #    DexScreener WETH pair. Untuk sekarang pakai ENV override kalau ada.
         try:
+            eth_amount_wei = _size_usd_to_eth_wei(size_usd)
+
+            # 2. Swap ETH → target token
+            self.emit("position.swap.start", {
+                "symbol": cand.symbol, "chain": cand.chain,
+                "eth_wei": eth_amount_wei, "target": cand.address,
+            })
+            swap = await asyncio.to_thread(
+                executor.swap_native_to_token,
+                target_token=cand.address,
+                amount_in_wei=eth_amount_wei,
+                fee=CONFIG.fee_tier,
+                slippage_bps=CONFIG.swap_slippage_bps,
+            )
+            self.emit("position.swap.done", {
+                "symbol": cand.symbol, "amount_out": swap.get("amount_out"),
+                "swap_tx": swap.get("swap_tx"),
+            })
+
+            # 3. Plan + broadcast mint. Yunus = single-side, jadi kita provide the
+            #    token (bukan WETH). token0/token1 ordering diambil dari pool state.
             plan = await asyncio.to_thread(
-                self.executor.plan_mint,
+                executor.plan_mint,
                 pool_address=cand.pair_address,
-                amount0_desired=int(size * 1e6),  # assumes USDC (6dec) as token0
+                amount0_desired=0,     # akan di-flip di bawah kalau target = token0
                 amount1_desired=0,
                 width_pct=CONFIG.range_width_pct,
             )
-            self.emit("position.plan", {"plan": plan, "cand": cand.to_dict()})
+            token_out = int(swap["amount_out"])
+            target_lc = cand.address.lower()
+            if plan["token0"].lower() == target_lc:
+                plan["amount0Desired"] = token_out
+            else:
+                plan["amount1Desired"] = token_out
 
-            result = await asyncio.to_thread(self.executor.execute_mint, plan)
+            self.emit("position.plan", {"plan": plan, "cand": cand.to_dict()})
+            result = await asyncio.to_thread(executor.execute_mint, plan)
             if result.get("status") != 1:
                 raise RuntimeError(f"mint tx reverted (status={result.get('status')})")
 
             pos = Position(
-                token_id=int(time.time() * 1000),  # real tokenId parsed from logs later
+                token_id=int(time.time() * 1000),
                 symbol=cand.symbol,
                 pair_address=cand.pair_address,
                 tick_lower=int(plan["tickLower"]),
@@ -174,15 +253,15 @@ class LPBot:
                 liquidity=0,
                 entry_price=cand.price_usd,
                 entry_ts=time.time(),
-                size_usd=size,
+                size_usd=size_usd,
                 chain=cand.chain,
             )
             self.state.positions[cand.pair_address] = pos
-            self.state.total_deployed_usd += size
+            self.state.total_deployed_usd += size_usd
             self.state.stats["positions_opened"] += 1
             self.emit("position.open", {
                 "mode": "live", "pos": pos.to_dict(), "cand": cand.to_dict(),
-                "tx": result.get("tx_hash"),
+                "swap_tx": swap.get("swap_tx"), "mint_tx": result.get("tx_hash"),
             })
         except Exception as e:
             self.state.stats["errors"] += 1

@@ -23,7 +23,7 @@ from .strategy import LPBot
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
-app = FastAPI(title="LP Hunter — Yunus Strategy", version="1.1")
+app = FastAPI(title="Robinhood LP Hunter — Yunus Strategy", version="1.2")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_methods=["*"], allow_headers=["*"], allow_credentials=True,

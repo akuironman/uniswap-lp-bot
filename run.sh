@@ -1,5 +1,6 @@
 #!/bin/bash
-# LP Hunter — Telegram Bot + Web Dashboard launcher
+# ROBINHOOD LP HUNTER — Telegram Bot + Web Dashboard launcher
+# Bot khusus Uniswap V3 di Robinhood Chain (chainId 4663, native ETH)
 set -e
 cd "$(dirname "$0")"
 

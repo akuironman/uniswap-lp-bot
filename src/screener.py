@@ -1,10 +1,12 @@
 """Token screener — meniru filter GMGN 24h + kriteria Yunus.
 
-Strategi Yunus: main di Robinhood Chain (dex: uniswap) + Base + Ethereum.
+Bot ini KHUSUS Robinhood Chain (chainId 4663, native ETH). Screening cuma
+narik pair Uniswap V3 di Robinhood, tidak lintas chain.
 Pipeline:
   1. Fetch token-boosts/top + token-profiles/latest dari DexScreener (fresh mover)
-  2. Untuk tiap token, fetch pair details via /latest/dex/tokens/{addr}
-  3. Filter: mcap > $500k, umur 6–72h, volume > $100k, ada pool uniswap-v3
+  2. Filter ke chain=robinhood
+  3. Untuk tiap token, fetch pair details via /latest/dex/tokens/{addr}
+  4. Filter: mcap > MIN_MARKET_CAP, umur MIN_AGE-MAX_AGE, vol > MIN_VOLUME_24H
 """
 from __future__ import annotations
 
@@ -17,9 +19,9 @@ import httpx
 
 from .config import CONFIG
 
-# Chains yang kita target — sesuai video Yunus
-TARGET_CHAINS = {"robinhood", "ethereum", "base"}
-TARGET_DEXES = {"uniswap", "uniswap-v3", "uniswapv3", "aerodrome"}
+# Chain khusus Robinhood — bot ini SENGAJA single-chain.
+TARGET_CHAINS = {"robinhood"}
+TARGET_DEXES = {"uniswap", "uniswap-v3", "uniswapv3"}
 
 
 @dataclass
@@ -118,7 +120,7 @@ def _parse_pair(p: dict[str, Any]) -> TokenCandidate | None:
             symbol=symbol,
             name=(base.get("name") or symbol)[:40],
             address=base.get("address") or "",
-            chain=p.get("chainId") or "ethereum",
+            chain=p.get("chainId") or "robinhood",
             price_usd=float(p.get("priceUsd") or 0),
             market_cap=mcap,
             fdv=float(p.get("fdv") or mcap),

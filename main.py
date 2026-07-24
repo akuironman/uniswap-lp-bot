@@ -94,7 +94,7 @@ def main() -> None:
             try:
                 await tg_app.bot.send_message(
                     chat_id=CONFIG.tg_notify_chat,
-                    text=f"🟢 <b>LP HUNTER online</b>\nkirim /start buat menu{dash_line}",
+                    text=f"🟢 <b>ROBINHOOD LP HUNTER online</b>\nchain 4663 · uniswap v3\nkirim /start buat menu{dash_line}",
                     parse_mode="HTML",
                 )
             except Exception as e:
