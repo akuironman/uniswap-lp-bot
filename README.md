@@ -67,8 +67,9 @@ Buat tombol **🖥 DASHBOARD** di menu Telegram muncul, set `DASHBOARD_PUBLIC_UR
 |---------|--------|
 | `/start` | Menu utama dengan tombol inline |
 | `/scan` | Scan sekarang, tampilkan top 10 candidate |
-| `/go` | Start bot loop (dry-run default) |
-| `/go live` | Start loop dengan on-chain execution (butuh PRIVATE_KEY) |
+| `/go` | Start loop (ikut `DRY_RUN` di `.env`) |
+| `/go live` | Start loop LIVE on-chain (butuh PRIVATE_KEY) |
+| `/go dry` | Start loop paksa dry-run (simulasi) |
 | `/stop` | Stop loop |
 | `/status` | PNL, deployed, stats lengkap |
 | `/positions` | List posisi aktif + Δ dari entry |
@@ -149,8 +150,15 @@ Bot default **dry-run** (simulasi, tidak nyentuh chain). Untuk live:
 
 1. Isi `PRIVATE_KEY` + `WALLET_ADDRESS` di `.env`
 2. Fund wallet dengan USDC/WETH di jaringan target
-3. Chat bot: `/go live`
+3. **Ganti mode** — pilih salah satu:
+   - **Lewat `.env`** (persisten): set `DRY_RUN=false`, lalu restart bot. Ini jadi mode default tiap start.
+   - **Lewat Telegram** (sekali jalan): `/go live` (paksa live) atau `/go dry` (paksa simulasi). Tanpa argumen, `/go` ikut nilai `DRY_RUN` di `.env`.
+   - **Lewat dashboard**: matikan toggle `DRY RUN` → klik `START`.
 4. Monitor lewat push notif / dashboard
+
+> 🔒 **Pengaman**: walau `DRY_RUN=false`, bot **tetap dry-run** kalau `PRIVATE_KEY` kosong / RPC mati. Jadi tidak akan pernah broadcast transaksi tanpa wallet siap.
+
+**Ganti mode balik ke aman**: set `DRY_RUN=true` di `.env` + restart, atau `/go dry`.
 
 **Executor live** (`src/uniswap.py`) sekarang benar-benar broadcast on-chain:
 - `execute_mint()` — auto-approve token → `mint()` NonfungiblePositionManager

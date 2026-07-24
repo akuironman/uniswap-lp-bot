@@ -207,7 +207,8 @@ async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         "<b>Commands:</b>\n"
         "/start — menu utama\n"
         "/scan — scan sekarang\n"
-        "/go [live] — start loop (default dry-run, ketik <code>/go live</code> buat live)\n"
+        "/go — start loop (ikut DRY_RUN di .env)\n"
+        "/go live — paksa LIVE on-chain · /go dry — paksa simulasi\n"
         "/stop — stop loop\n"
         "/status — snapshot lengkap\n"
         "/positions — posisi aktif\n"
@@ -260,9 +261,16 @@ async def cmd_scan(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cmd_go(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if not _allowed(update.effective_chat.id) or not _lp_bot:
         return
-    live = ctx.args and ctx.args[0].lower() == "live"
-    dry = not live
-    if live and not CONFIG.private_key:
+    # Tanpa argumen → pakai default DRY_RUN dari .env.
+    # /go live → paksa live · /go dry → paksa dry-run.
+    arg = ctx.args[0].lower() if ctx.args else ""
+    if arg == "live":
+        dry = False
+    elif arg in ("dry", "dryrun", "dry-run", "sim"):
+        dry = True
+    else:
+        dry = CONFIG.dry_run
+    if not dry and not CONFIG.private_key:
         await update.effective_message.reply_text(
             "⚠ live mode butuh PRIVATE_KEY di .env. jalan dry-run dulu.")
         dry = True

@@ -143,8 +143,10 @@ function applySnapshot(s) {
   if (typeof s.running === "boolean") {
     $("#btnStart").disabled = s.running;
     $("#btnStop").disabled = !s.running;
-    if (typeof s.dry_run === "boolean") $("#dryRun").checked = s.dry_run;
   }
+  // Sync DRY RUN toggle with server (reflects .env DRY_RUN default) whenever
+  // the snapshot reports it — even while idle, so the UI shows the real mode.
+  if (typeof s.dry_run === "boolean") $("#dryRun").checked = s.dry_run;
 
   renderCandidates(s.candidates ?? []);
   renderPositions(s.positions ?? []);

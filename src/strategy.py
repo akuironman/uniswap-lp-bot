@@ -27,7 +27,7 @@ LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 @dataclass
 class BotState:
     running: bool = False
-    dry_run: bool = True
+    dry_run: bool = field(default_factory=lambda: CONFIG.dry_run)
     last_scan_ts: float = 0
     candidates: list[TokenCandidate] = field(default_factory=list)
     positions: dict[str, Position] = field(default_factory=dict)
@@ -65,9 +65,13 @@ class LPBot:
             pass
 
     # ---- main loop ----
-    async def start(self, dry_run: bool = True) -> None:
+    async def start(self, dry_run: bool | None = None) -> None:
         if self.state.running:
             return
+        # None → pakai default dari .env (CONFIG.dry_run). Telegram /go live &
+        # dashboard toggle tetap bisa override eksplisit.
+        if dry_run is None:
+            dry_run = CONFIG.dry_run
         self.state.running = True
         self.state.dry_run = dry_run
         self.emit("bot.start", {"dry_run": dry_run, "config": {

@@ -123,9 +123,11 @@ async def health() -> JSONResponse:
 
 
 @app.post("/api/start")
-async def start_bot(dry_run: bool = True) -> JSONResponse:
-    await get_bot().start(dry_run=dry_run)
-    return JSONResponse({"ok": True, "running": True, "dry_run": dry_run})
+async def start_bot(dry_run: bool | None = None) -> JSONResponse:
+    # dry_run omitted → fall back to .env DRY_RUN (CONFIG.dry_run).
+    mode = CONFIG.dry_run if dry_run is None else dry_run
+    await get_bot().start(dry_run=mode)
+    return JSONResponse({"ok": True, "running": True, "dry_run": mode})
 
 
 @app.post("/api/stop")

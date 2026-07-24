@@ -83,6 +83,11 @@ class Config:
     # Loop
     scan_interval_sec: int = _i("SCAN_INTERVAL_SEC", 60)
 
+    # Trading mode. dry_run=True → simulasi (tidak nyentuh chain). Set DRY_RUN=false
+    # di .env untuk LIVE. Default True demi keamanan. Bot tetap dry-run kalau
+    # PRIVATE_KEY belum di-set walaupun DRY_RUN=false.
+    dry_run: bool = _b("DRY_RUN", True)
+
     # Web dashboard (FastAPI + WebSocket)
     host: str = os.getenv("HOST", "0.0.0.0")
     port: int = _i("PORT", 8080)
