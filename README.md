@@ -1,6 +1,6 @@
 # 💎 LP HUNTER — Telegram Bot + Web Dashboard
 
-Bot auto-LP Uniswap V3 dengan strategi persis dari [@0xyunss](https://x.com/0xyunss/status/2078140396182651195):
+Bot auto-LP Uniswap V3 :
 
 > screening 24h → single-side stable → multi-hours → spray 3 pair → auto rebalance
 
