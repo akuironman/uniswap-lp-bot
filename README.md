@@ -96,8 +96,8 @@ WALLET_ADDRESS=
 
 # Uniswap V3 di Robinhood
 WETH_ADDRESS=0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73  # verified
-NPM_ADDRESS=          # ← WAJIB isi buat LIVE
-SWAP_ROUTER_ADDRESS=  # ← WAJIB isi buat LIVE
+NPM_ADDRESS=0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3  # ← pre-filled ✓
+UNIVERSAL_ROUTER_ADDRESS=0x8876789976dEcBfCbBbe364623C63652db8C0904  # ← pre-filled ✓
 
 # Screening (Yunus filters)
 MIN_MARKET_CAP=50000
@@ -124,16 +124,14 @@ DRY_RUN=true            # true=simulasi, false=live
 
 ## Live trading — bot khusus Robinhood
 
-Bot **default dry-run**. Untuk aktifkan LIVE:
+Bot **default dry-run**. Untuk aktifkan LIVE cukup 3 hal (alamat Uniswap sudah pre-filled):
 
 1. Isi `.env`:
    ```
    DRY_RUN=false
    PRIVATE_KEY=0x...
    WALLET_ADDRESS=0x...
-   POSITION_SIZE_ETH=0.05     # rekomendasi kecil dulu buat uji
-   NPM_ADDRESS=0x...          # ← cari di robinhoodchain.blockscout.com
-   SWAP_ROUTER_ADDRESS=0x...  # ← cari di robinhoodchain.blockscout.com
+   POSITION_SIZE_ETH=0.01     # mulai kecil dulu buat uji (recommended)
    ```
 2. Fund wallet-mu di Robinhood Chain dengan ETH (buat modal LP + gas).
 3. `bash run.sh` → bot mulai live otomatis.
@@ -145,24 +143,28 @@ Bot **default dry-run**. Untuk aktifkan LIVE:
 
 ### Alur live yang bot jalankan tiap open posisi
 1. **Sizing**: `POSITION_SIZE_ETH` (kalau di-set) atau `POSITION_SIZE_USD` dikonversi ke wei ETH via ETH/USD DexScreener
-2. **Swap**: `ETH → WETH → target token` via SwapRouter (slippage `SWAP_SLIPPAGE_BPS`)
+2. **Swap**: `ETH → WETH → target token` via Uniswap **UniversalRouter** (`execute()` + encoded V3_SWAP_EXACT_IN command)
 3. **Mint**: LP posisi single-side dengan token yang baru di-swap, range ±`RANGE_WIDTH_PCT`
 4. **Manage**: TP/SL/rebalance seperti biasa; close = `decreaseLiquidity+collect+burn`
 
-### Cara cari NPM & SwapRouter Uniswap V3 di Robinhood Chain
+### Alamat kontrak Uniswap V3 di Robinhood (sudah pre-filled)
 
-1. Buka https://robinhoodchain.blockscout.com
-2. Cari transaksi swap Uniswap V3 (bisa dari pair Uniswap V3 di DexScreener → klik tx hash)
-3. Kontrak yang menerima call `exactInputSingle` = **SwapRouter**
-4. Kontrak yang menerima call `mint` = **NonfungiblePositionManager**
-5. Salin address-nya ke `.env`
+| Kontrak | Address | Sumber verifikasi |
+|---|---|---|
+| **WETH9** | `0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73` | Quote token dari pair Uniswap V3 IF/WETH real di DexScreener |
+| **NonfungiblePositionManager** | `0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3` | Label eksplisit "NonfungiblePositionManager" di blockscout, dikonfirmasi dari `mint()` tx nyata |
+| **UniversalRouter** | `0x8876789976dEcBfCbBbe364623C63652db8C0904` | Verified contract "UniversalRouter" di blockscout, 3.3M+ tx, dideploy via Uniswap CREATE2 factory |
+
+Ingin verifikasi sendiri? Buka https://robinhoodchain.blockscout.com/address/`<address>` — semua kontrak di atas verified + activity historinya bisa ditelusuri.
 
 ### 🔒 Pengaman berlapis
-- Kalau `NPM_ADDRESS` / `SWAP_ROUTER_ADDRESS` kosong → bot **otomatis skip live** dan fallback ke dry-run (dengan alasan jelas di feed).
-- Kalau `PRIVATE_KEY` kosong → sama, fallback dry-run.
-- Slippage guard: `amountOutMinimum` dihitung dari simulasi swap × (1 - `SWAP_SLIPPAGE_BPS/10000`), bukan 0. Bot **menolak** swap dengan expected out = 0 (no pool).
+- Kalau `PRIVATE_KEY` / `NPM_ADDRESS` / `UNIVERSAL_ROUTER_ADDRESS` kosong → bot **otomatis skip live** dan fallback ke dry-run (dengan alasan jelas di feed).
+- Reserve gas 0.005 ETH otomatis (bot tidak akan swap semua ETH-mu).
+- Bot **menolak** swap kalau ETH balance kurang untuk swap + gas reserve.
 
-> ⚠️ **BELUM diuji end-to-end dengan dana nyata** — jalur live butuh alamat NPM/SwapRouter yang benar + wallet berdana + RPC live. **Wajib** coba dengan `POSITION_SIZE_ETH=0.01` di **satu pair** dulu sebelum naikin ukuran.
+> ⚠️ **Catatan slippage**: current implementation kirim `amountOutMinimum=0` karena bot ini target pool yang bisa jadi baru/small-cap (QuoterV2 tidak selalu tersedia). Ini bikin bot rawan MEV kalau kamu pakai ukuran besar. **Wajib** mulai dengan `POSITION_SIZE_ETH=0.01` di **satu pair** dulu buat uji, dan monitor swap output-nya. Slippage protection via QuoterV2 akan ditambah nanti.
+
+> ⚠️ **BELUM diuji end-to-end dengan dana nyata** — jalur live butuh wallet berdana + RPC live. **Wajib** coba dengan `POSITION_SIZE_ETH=0.01` di **satu pair** dulu sebelum naikin ukuran.
 
 ---
 

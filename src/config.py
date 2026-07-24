@@ -65,11 +65,19 @@ class Config:
     # WETH terverifikasi dari pair Uniswap V3 real di DexScreener (base
     # token dari pool IF/WETH: 0x39A200...953).
     weth_address: str = os.getenv("WETH_ADDRESS", "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73")
-    # NPM & SwapRouter WAJIB diisi manual — belum ada sumber publik yang
-    # bisa kuverifikasi. Cari di https://robinhoodchain.blockscout.com
-    # Kalau kosong, bot tetap dry-run (executor.can_trade() → False).
-    npm_address: str = os.getenv("NPM_ADDRESS", "")
-    swap_router_address: str = os.getenv("SWAP_ROUTER_ADDRESS", "")
+    # NPM (NonfungiblePositionManager) & UniversalRouter untuk Uniswap V3
+    # di Robinhood. Terverifikasi via on-chain lookup (Mint & swap event
+    # analysis di block explorer). Bisa di-override lewat env.
+    # UniversalRouter dipakai untuk swap (execute() + encoded commands),
+    # menggantikan SwapRouter02 klasik.
+    npm_address: str = os.getenv(
+        "NPM_ADDRESS", "0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3"
+    )
+    # Terima "UNIVERSAL_ROUTER_ADDRESS" ATAU legacy "SWAP_ROUTER_ADDRESS"
+    universal_router_address: str = os.getenv(
+        "UNIVERSAL_ROUTER_ADDRESS",
+        os.getenv("SWAP_ROUTER_ADDRESS", "0x8876789976dEcBfCbBbe364623C63652db8C0904"),
+    )
 
     # ── Screening (Yunus filters) ──────────────────────────────
     # Default longgar untuk Robinhood chain — kebanyakan microcap.
@@ -105,7 +113,7 @@ class Config:
     # ── Trading mode ────────────────────────────────────────────
     # dry_run=True → simulasi (tidak nyentuh chain). Set DRY_RUN=false di .env
     # untuk LIVE. Default True demi keamanan. Bot tetap dry-run kalau
-    # PRIVATE_KEY / NPM_ADDRESS / SWAP_ROUTER_ADDRESS belum di-set.
+    # PRIVATE_KEY / NPM_ADDRESS / UNIVERSAL_ROUTER_ADDRESS belum di-set.
     dry_run: bool = _b("DRY_RUN", True)
 
     # ── Web dashboard ───────────────────────────────────────────
