@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>💎 LP HUNTER · Yunus Strategy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Background grid + noise -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Header -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-logo">💎</span>
+      <div>
+        <h1>LP HUNTER</h1>
+        <span class="tag">yunus strategy · GMGN 24h · single-side stable</span>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="stat-mini">
+        <span class="dot" id="connDot"></span>
+        <span id="connText">connecting…</span>
+      </div>
+      <button id="btnScan" class="btn btn-ghost">⚡ SCAN NOW</button>
+      <button id="btnStart" class="btn btn-primary">▶ START</button>
+      <button id="btnStop" class="btn btn-danger" disabled>■ STOP</button>
+      <label class="toggle">
+        <input type="checkbox" id="dryRun" checked />
+        <span>DRY RUN</span>
+      </label>
+    </div>
+  </header>
+
+  <!-- KPI cards -->
+  <section class="kpis">
+    <div class="kpi">
+      <div class="kpi-label">PNL 24H</div>
+      <div class="kpi-value" id="kpiPnl">$0.00</div>
+      <div class="kpi-sub" id="kpiPnlPct">+0.00%</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">DEPLOYED</div>
+      <div class="kpi-value" id="kpiDeployed">$0</div>
+      <div class="kpi-sub" id="kpiPositions">0 positions</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">SCANS</div>
+      <div class="kpi-value" id="kpiScans">0</div>
+      <div class="kpi-sub" id="kpiLastScan">never</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">SIGNALS</div>
+      <div class="kpi-value" id="kpiCandidates">0</div>
+      <div class="kpi-sub">passed filter</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">REBALANCES</div>
+      <div class="kpi-value" id="kpiRebalance">0</div>
+      <div class="kpi-sub" id="kpiClose">0 closed</div>
+    </div>
+  </section>
+
+  <!-- Main grid -->
+  <main class="grid">
+    <!-- Candidates -->
+    <section class="panel span-2">
+      <div class="panel-head">
+        <h2>🎯 CANDIDATES · top signals</h2>
+        <span class="panel-sub" id="candCount">0 tokens</span>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>SCORE</th>
+              <th>TOKEN</th>
+              <th>CHAIN</th>
+              <th>MCAP</th>
+              <th>LIQ</th>
+              <th>VOL 24H</th>
+              <th>AGE</th>
+              <th>Δ 6H</th>
+              <th>Δ 24H</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="candBody">
+            <tr><td colspan="10" class="empty">no candidates yet · press <b>SCAN NOW</b> or <b>START</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Positions -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>💼 POSITIONS</h2>
+        <span class="panel-sub" id="posCount">0 active</span>
+      </div>
+      <div id="posList" class="pos-list">
+        <div class="empty">no active positions</div>
+      </div>
+    </section>
+
+    <!-- Config -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>⚙️ STRATEGY</h2>
+        <span class="panel-sub">yunus filters</span>
+      </div>
+      <div class="cfg" id="cfg"></div>
+    </section>
+
+    <!-- Log stream -->
+    <section class="panel span-2">
+      <div class="panel-head">
+        <h2>📡 LIVE FEED</h2>
+        <span class="panel-sub" id="feedCount">0 events</span>
+      </div>
+      <div id="feed" class="feed"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>💎 LP HUNTER v1.0</span>
+    <span>·</span>
+    <span>strategy: yunus (@0xyunss)</span>
+    <span>·</span>
+    <span>uniswap v3 · single-side · tight range</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
